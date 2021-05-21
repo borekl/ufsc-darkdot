@@ -11,6 +11,7 @@ use warnings;
 use Moo;
 use Imager;
 use Imager::Color;
+use Path::Tiny;
 
 #--- attributes ---------------------------------------------------------------
 
@@ -116,6 +117,42 @@ sub find_darkest_pixel
   }
 
   return undef;
+}
+
+# draw a cross marker at supplied x/y coordinates
+
+sub draw_marker
+{
+  my ($self, %arg) = @_;
+  my $img = $self->image;
+
+  my $color = Imager::Color->new(200,200,200,0);
+  my %line_h = (x1 => 0, y1 => $arg{y}, x2 => $img->getwidth - 1, y2 => $arg{y});
+  my %line_v = (x1 => $arg{x}, y1 => 0, x2 => $arg{x}, y2 => $img->getheight - 1);
+
+  $img->line(color => $color, %line_h);
+  $img->line(color => $color, %line_v);
+
+  return $self;
+}
+
+# save the file back; by default it uses the original name with 'mark' appended
+
+sub save
+{
+  my ($self, %arg) = @_;
+  my $target;
+
+  if(exists $arg{file}) {
+    $target = path $arg{file};
+  } else {
+    my $file = path $self->file;
+    my $base = $file->basename('.png');
+    my $affix = $arg{'affix'} // 'mark';
+    $target = $file->sibling("$base-$affix.png");
+  }
+
+  $self->image->write(file => $target->canonpath, type => 'png');
 }
 
 #------------------------------------------------------------------------------
