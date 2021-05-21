@@ -96,6 +96,11 @@ sub _build_bg_color
 sub width { $_[0]->image->getwidth }
 sub height { $_[0]->image->getheight }
 
+# UFSC's original "unnamed" series had a frame with single dark pixel in them;
+# following function tries to find it; it does this by trying to find pixel
+# with the darkest color in the image; when one is found, its coordinates are
+# returned in an arrayref, otherwise undef is returned
+
 sub find_darkest_pixel
 {
   my ($self) = @_;
@@ -119,7 +124,8 @@ sub find_darkest_pixel
   return undef;
 }
 
-# draw a cross marker at supplied x/y coordinates
+# draw a cross marker at supplied (x,y) coordinates (modifies the in-memory
+# image)
 
 sub draw_marker
 {
@@ -136,7 +142,8 @@ sub draw_marker
   return $self;
 }
 
-# save the file back; by default it uses the original name with 'mark' appended
+# save the file back; by default it uses the original name with user definable
+# affix appended (or 'mark' if unspecified)
 
 sub save
 {
