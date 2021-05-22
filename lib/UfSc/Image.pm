@@ -71,15 +71,26 @@ sub _build_colors
   return \@colors_decoded;
 }
 
-# we find the darkest color (ie. color with the lowest hsv 'value')
+# we find the darkest color (ie. color with the lowest hsv 'value'); only
+# colors with count == 1 are included, otherwise the search for the 'dark pixel'
+# would be ambiguous
 
 sub _build_darkest_color
 {
   my ($self) = @_;
   my $colors = $self->colors;
 
-  my ($darkest_color) = sort { $a->{v} <=> $b->{v} } @$colors;
-  return Imager::Color->new(@{$darkest_color}{qw(r g b)});
+  my ($darkest_color) = sort {
+    $a->{v} <=> $b->{v}
+  } grep {
+    $_->{count} == 1
+  } @$colors;
+
+  if($darkest_color) {
+    return Imager::Color->new(@{$darkest_color}{qw(r g b)});
+  } else {
+    return undef;
+  }
 }
 
 sub _build_bg_color
@@ -107,6 +118,9 @@ sub find_darkest_pixel
   my $img = $self->image;
   my $darkest = $self->darkest_color;
   my ($w, $h) = ($self->width, $self->height);
+
+  # no darkest color was found
+  return undef if !$self->darkest_color;
 
   # if all pixels are the same color, then there's nothing to look for
   return undef if @{$self->colors} == 1;
