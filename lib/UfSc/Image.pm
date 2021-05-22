@@ -156,6 +156,28 @@ sub draw_marker
   return $self;
 }
 
+# cross out the image, ie. draw two diagonals; this is used to mark frames where
+# the dark pixel was not detected
+
+sub draw_cross
+{
+  my ($self) = @_;
+  my $img = $self->image;
+  my $color = Imager::Color->new(200,200,200,0);
+
+  my %line_1 = (
+    x1 => 0, y1 => 0, x2 => $img->getwidth - 1, y2 => $img->getheight - 1
+  );
+  my %line_2 = (
+    x1 => 0, y1 => $img->getheight - 1, x2 => $img->getwidth - 1, y2 => 0
+  );
+
+  $img->line(color => $color, %line_1);
+  $img->line(color => $color, %line_2);
+
+  return $self;
+}
+
 # save the file back; by default it uses the original name with user definable
 # affix appended (or 'mark' if unspecified)
 
