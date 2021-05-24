@@ -1,0 +1,92 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use v5.10;
+
+use Encode qw(decode_utf8);
+use Path::Tiny;
+use JSON::MaybeXS;
+use FindBin qw($Bin);
+use lib "$Bin/lib";
+
+use UfSc::Video;
+
+# make STDOUT output UTF-8 without warnings
+
+binmode STDOUT, ':utf8';
+
+# get list of directories to be processed; if none are specified use current
+# directory
+
+my @dirs;
+if(@ARGV) {
+  @dirs = map { my $d = path $_; $d->exists ? $d : (); } @ARGV;
+} else {
+  push(@dirs, Path::Tiny->cwd);
+}
+
+die 'No valid directories specified' unless @dirs;
+
+# read list of files to be processed
+
+print 'Looking for files to process ... ';
+
+my @files;
+
+foreach my $dir (@dirs) {
+  push(@files, $dir->children(qr/\.mp4$/));
+}
+
+say scalar(@files), ' files found';
+
+# data structure for export of the resulting finds
+
+my %result = ( files => [], stats => {
+  files_count => scalar(@files),
+  notfound_count => 0,
+});
+
+# iterate over all files
+
+foreach my $file (@files) {
+
+  my %record = ( file => decode_utf8($file->basename) );
+  printf 'Processing %s', $record{file};
+
+  # process the video file and obtain average frame
+  my $video = UfSc::Video->new(file => $file);
+  my $image = $video->get_average_frame;
+
+  # record some ancillary information about the frame
+  $record{width} = $image->width;
+  $record{height} = $image->height;
+  my $darkest = $image->darkest_color;
+  my $bgcolor = $image->bg_color;
+  $record{darkest_color} = [ ($darkest->rgba)[0..2] ] if $darkest;
+  $record{bg_color} = [ ($image->bg_color->rgba)[0..2 ] ];
+
+  # try to detect the dark dot
+  my $pixel = $image->find_darkest_pixel;
+  if(ref $pixel) {
+    printf ", found at (%d,%d).\n", @$pixel;
+    $image->draw_marker(
+      x => $pixel->[0], y => $pixel->[1])->save(affix => 'found'
+    );
+    $record{coord} = $pixel;
+    $result{stats}{found_count}++;
+  } else {
+    $image->draw_cross->save(affix => 'notfound');
+    $record{coord} = undef;
+    $result{stats}{notfound_count}++;
+    say ', not found.';
+  }
+
+  # save extracted data
+  push(@{$result{files}}, \%record);
+}
+
+# save results into a JSON file
+
+my $j = JSON::MaybeXS->new(utf8 => 1, pretty => 1);
+Path::Tiny->new('ufsc-darkdot.json')->spew_raw($j->encode(\%result));
