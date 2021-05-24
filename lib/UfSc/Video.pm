@@ -22,7 +22,7 @@ has file => (
 sub get_average_frame
 {
   my ($self) = @_;
-  my $ff = q{ffmpeg -i "%s" -y -vf tmix=frames=120:weights="1",select='not(mod(n\,120))' "%s"};
+  my $ff = q{ffmpeg -i "%s" -y -frames:v 1 -vf tmix=frames=60:weights="1",select='not(mod(n\,60))' "%s"};
 
   my $imgfile = $self->file->sibling(
     $self->file->basename('.mp4') . '.png'
