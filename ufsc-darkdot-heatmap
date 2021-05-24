@@ -1,0 +1,57 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use v5.10;
+use utf8;
+
+use JSON::MaybeXS;
+use Path::Tiny;
+use List::Util qw(min max);
+use Term::ANSIColor;
+use Getopt::Long;
+
+binmode STDOUT, ':utf8';
+
+sub rgb
+{
+  my ($min, $max, $val) = @_;
+  my $ratio = 2 * ($val - $min) / ($max - $min);
+  my $b = int(max 0, 255*(1-$ratio));
+  my $r = int(max 0, 255*($ratio - 1));
+  my $g = 255 - $b - $r;
+  return ($r, $g, $b);
+}
+
+GetOptions('heatmap' => \my $heatmap)
+or die 'Invalid command-line arguments';
+
+my $src_json = path 'ufsc-darkdot.json';
+my $j = JSON::MaybeXS->new(utf8 => 1);
+
+my $src = $j->decode($src_json->slurp_raw);
+
+my @heatmap;
+
+my $i = 0;
+my $max_val = 0;
+foreach my $file (@{$src->{files}}) {
+  if($file->{coord}) {
+    my ($x, $y) = @{$file->{coord}};
+    $heatmap[$x][$y]++;
+    $max_val = $heatmap[$x][$y] if $max_val < $heatmap[$x][$y];
+  }
+}
+
+for(my $y = 0; $y < 50; $y++) {
+  for(my $x = 0; $x < 50; $x++) {
+    my $attr;
+    if($heatmap) {
+      $attr = sprintf('r%03dg%03db%03d', rgb(0, $max_val, $heatmap[$x][$y]));
+    } else {
+      $attr = sprintf('r%03dg%03db%03d', (($heatmap[$x][$y] * 5) x 3));
+    }
+    print colored('██', $attr);
+  }
+  print "\n";
+}
